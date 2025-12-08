@@ -1,0 +1,64 @@
+xBase/
+├── .github/
+│   └── workflows/
+│       ├── deploy-edge-functions.yml     # Auto-deploy Supabase Edge Functions
+│       └── docker-build.yml              # Docker build & push (optional)
+│
+├── app/
+│   ├── api/
+│   │   ├── auth/xaman/
+│   │   │   ├── callback/route.ts         # OAuth redirect handler
+│   │   │   ├── create-payload/
+│   │   │   │   └── xahau-payload/route.ts # Proxy → Edge Function
+│   │   │   └── status/[payloadId]/route.ts
+│   │   └── webhooks/xaman/route.ts       # Xaman webhook handler
+│   ├── donate/
+│   │   ├── cancelled/page.tsx
+│   │   ├── status/page.tsx
+│   │   ├── status/loading.tsx
+│   │   └── success/page.tsx
+│   ├── globals.css
+│   ├── layout.tsx
+│   └── page.tsx                          # Main donate UI
+│
+├── components/
+│   ├── donate-xah-form.tsx               # Donation form component
+│   └── ui/                               # shadcn/ui components
+│
+├── lib/
+│   ├── supabase/
+│   │   ├── client.ts                     # Browser Supabase client
+│   │   └── server.ts                     # Server Supabase client
+│   ├── xaman/
+│   │   └── utils.ts                      # Xaman helpers
+│   └── utils.ts
+│
+├── supabase/
+│   ├── config.toml
+│   ├── README.md
+│   └── functions/
+│       ├── .env.example
+│       ├── xaman-createPayload/index.ts  # Edge Fn: create payload
+│       ├── xaman-status/index.ts         # Edge Fn: check status
+│       └── xaman-webhook/index.ts        # Edge Fn: verify tx
+│
+├── types/
+│   └── xaman.ts
+│
+├── public/
+│
+├── scripts/
+│   ├── setup-supabase.sh
+│   └── deploy-evernode.sh
+│
+├── .env.example                          # → copy to .env.local
+├── Dockerfile
+├── docker-compose.yml
+├── evernode.config.json
+├── xmerch.config.json
+├── next.config.mjs
+├── package.json
+├── tsconfig.json
+├── components.json
+├── README.md
+└── file_tree.txt

@@ -1,0 +1,45 @@
+{
+  "$schema": "https://evernode.dev/schema/config.json",
+  "name": "xbase",
+  "version": "1.0.0",
+  "description": "xBase - Xahau + Xaman wallet integration template",
+  "docker": {
+    "image": "ghcr.io/your-org/xbase:latest",
+    "ports": {
+      "http": 3000
+    },
+    "healthcheck": {
+      "path": "/api/health",
+      "interval": 30,
+      "timeout": 10,
+      "retries": 3
+    }
+  },
+  "resources": {
+    "memory": "512MB",
+    "cpu": 0.5
+  },
+  "env": {
+    "NODE_ENV": "production",
+    "PORT": "3000"
+  },
+  "envSecrets": [
+    "NEXT_PUBLIC_SUPABASE_URL",
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+    "SUPABASE_URL",
+    "SUPABASE_SERVICE_ROLE_KEY",
+    "NEXT_PUBLIC_BASE_URL"
+  ],
+  "domains": {
+    "custom": true,
+    "ssl": true
+  },
+  "networking": {
+    "ingress": {
+      "http": {
+        "port": 3000,
+        "path": "/"
+      }
+    }
+  }
+}

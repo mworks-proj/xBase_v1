@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="a" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 480">
+  <circle cx="240" cy="240" r="199.77"/>
+  <polygon points="180.49 131.84 272.58 240.67 180.49 348.16 115.33 348.16 207.86 240 117.94 131.84 180.49 131.84" style="fill:#f2f2f2; stroke:#000; stroke-miterlimit:10;"/>
+  <polygon points="279.31 248.25 246.73 286.48 299.95 348.16 364.67 348.16 279.31 248.25" style="fill:gray;"/>
+  <polygon points="279.31 231.75 246.73 193.52 299.95 131.84 364.67 131.84 279.31 231.75" style="fill:gray;"/>
+</svg>

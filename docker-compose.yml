@@ -1,0 +1,48 @@
+# xBase - Docker Compose configuration
+# For local development and Evernode deployment
+
+version: '3.8'
+
+services:
+  xbase:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: xbase-app
+    ports:
+      - "3000:3000"
+    environment:
+      # Supabase Configuration
+      - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
+      - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+      # App Configuration
+      - NEXT_PUBLIC_BASE_URL=${NEXT_PUBLIC_BASE_URL:-http://localhost:3000}
+      - NODE_ENV=production
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/api/webhooks/xaman"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+# Optional: Local Supabase for development
+# Uncomment to run Supabase locally
+# supabase-db:
+#   image: supabase/postgres:15.1.0.117
+#   container_name: xbase-supabase-db
+#   ports:
+#     - "5432:5432"
+#   environment:
+#     POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+#     POSTGRES_DB: postgres
+#   volumes:
+#     - supabase-db-data:/var/lib/postgresql/data
+#   restart: unless-stopped
+
+# volumes:
+#   supabase-db-data:
+
+networks:
+  default:
+    name: xbase-network

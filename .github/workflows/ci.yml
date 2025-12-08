@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  NEXT_PUBLIC_SUPABASE_URL: http://localhost:54321
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: dev-anon-key
+  NEXT_PUBLIC_BASE_URL: http://localhost:3000
+  SUPABASE_URL: http://localhost:54321
+  SUPABASE_SERVICE_ROLE_KEY: dev-service-role-key
+  XUMM_API_KEY: dev-xumm
+  XUMM_API_SECRET: dev-xumm-secret
+  XUMM_API_KEY_XRPL: dev-xumm-xrpl
+  XUMM_API_SECRET_XRPL: dev-xumm-secret-xrpl
+  XAH_DESTINATION: rXAHDESTINATION
+  XRP_DESTINATION: rXRPDESTINATION
+  CI: true
+
+jobs:
+  lint-and-build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Build
+        run: pnpm build
