@@ -27,11 +27,14 @@ No traditional backend servers required — fully serverless with Edge Functions
 
 ```mermaid
 flowchart LR
-  A[Next.js app\n(Evernode/Docker)] -->|Uses service role key| B[Supabase Edge Functions\n(Secrets in Vault)]
-  B -->|Creates/queries payloads| C[Xaman API\n(xumm.app)]
-  B -->|Stores donation status| D[(Supabase Database\nDonations table)]
-  note right of A: No secrets baked into the container
-  note right of B: Secrets live in Supabase Vault
+  A[Next.js app<br/>(Evernode/Docker)<br/><small>No secrets in container</small>]
+  B[Supabase Edge Functions<br/><small>Secrets in Vault</small>]
+  C[Xaman API (xumm.app)]
+  D[(Supabase Database<br/>Donations table)]
+
+  A -->|Uses service role key| B
+  B -->|Creates/queries payloads| C
+  B -->|Stores donation status| D
 ```
 
 **Why this architecture?**
