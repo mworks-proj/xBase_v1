@@ -25,19 +25,14 @@ No traditional backend servers required — fully serverless with Edge Functions
 
 ## 🏗️ Architecture
 
-\`\`\`
-┌─────────────────────┐     ┌─────────────────────┐     ┌─────────────────┐
-│   Evernode/Docker   │────▶│  Supabase Edge      │────▶│   Xaman API     │
-│   (Next.js App)     │     │  Functions          │     │   (xumm.app)    │
-│   NO SECRETS HERE   │     │  SECRETS IN VAULT   │     └─────────────────┘
-└─────────────────────┘     └─────────────────────┘
-                                      │
-                                      ▼
-                            ┌─────────────────────┐
-                            │  Supabase Database  │
-                            │  (Donations Table)  │
-                            └─────────────────────┘
-\`\`\`
+```mermaid
+flowchart LR
+  A[Next.js app\n(Evernode/Docker)] -->|Uses service role key| B[Supabase Edge Functions\n(Secrets in Vault)]
+  B -->|Creates/queries payloads| C[Xaman API\n(xumm.app)]
+  B -->|Stores donation status| D[(Supabase Database\nDonations table)]
+  note right of A: No secrets baked into the container
+  note right of B: Secrets live in Supabase Vault
+```
 
 **Why this architecture?**
 - Evernode is a trustless environment — you don't own the host
