@@ -1,8 +1,7 @@
 name: Build and Push Docker Image
 
 on:
-  push:
-    branches: [main]
+  # Manual only by default; enable push triggers when registry secrets are configured.
   workflow_dispatch:
 
 env:
@@ -10,6 +9,7 @@ env:
   
 jobs:
   build-and-push:
+    if: ${{ secrets.DOCKER_USERNAME != '' && secrets.DOCKER_PASSWORD != '' }}
     runs-on: ubuntu-latest
     
     steps:

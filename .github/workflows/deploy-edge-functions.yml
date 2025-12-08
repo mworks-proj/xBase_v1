@@ -1,14 +1,12 @@
 name: Deploy Supabase Edge Functions
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'supabase/functions/**'
+  # Manual only by default; enable push triggers when secrets are configured.
   workflow_dispatch:
 
 jobs:
   deploy:
+    if: ${{ secrets.SUPABASE_ACCESS_TOKEN != '' && secrets.SUPABASE_PROJECT_ID != '' }}
     runs-on: ubuntu-latest
     
     steps:
