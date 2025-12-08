@@ -21,6 +21,11 @@ No traditional backend servers required — fully serverless with Edge Functions
 - Security reporting: see `SECURITY.md`
 - Release notes: see `CHANGELOG.md`
 
+## 📦 Versioning
+- Current version: `1.0.0` (see `package.json` and `CHANGELOG.md`).
+- Tag releases when you cut a new version: `git tag -a v1.0.x -m "v1.0.x" && git push origin v1.0.x`.
+- Keep the changelog in sync with tags so forks can track changes.
+
 ---
 
 ## 🏗️ Architecture
