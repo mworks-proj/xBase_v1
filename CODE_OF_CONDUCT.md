@@ -6,4 +6,4 @@ We follow the [Contributor Covenant](https://www.contributor-covenant.org/versio
 - Provide constructive feedback; focus on the work, not the person.
 - Do not share others’ private information.
 
-Enforcement: Report concerns privately via GitHub’s reporting tools or by emailing `maintainers@xmerch.dev`. The maintainers will review, clarify expectations, and take appropriate action.
+Enforcement: Report concerns privately via GitHub’s reporting tools or by emailing `support@xmerch.app`. The maintainers will review, clarify expectations, and take appropriate action.
