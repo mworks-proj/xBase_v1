@@ -48,11 +48,11 @@ flowchart LR
 
 ## 🚀 Quick Start
 
-\`\`\`bash
+```bash
 pnpm dlx xmerch create
 cd xbase-project
 pnpm dev
-\`\`\`
+```
 
 This generates a full working dApp with:
 
@@ -64,9 +64,9 @@ This generates a full working dApp with:
 
 Visit:
 
-\`\`\`bash
+```bash
 http://localhost:3000
-\`\`\`
+```
 
 ---
 
@@ -105,7 +105,7 @@ You can obtain Xaman credentials at:
 
 ## 📁 Project Structure
 
-\`\`\`bash
+```bash
 xbase-project/
 │
 ├── app/
@@ -166,7 +166,7 @@ xbase-project/
 ├── package.json
 ├── tailwind.config.ts
 └── README.md
-\`\`\`
+```
 
 ---
 
@@ -177,13 +177,13 @@ xbase-project/
 User selects a donation amount (10, 50, 100 XAH) or enters custom amount.  
 Clicking **Donate** triggers:
 
-\`\`\`tsx
+```tsx
 const res = await fetch("/api/auth/xaman/create-payload/xahau-payload", {
   method: "POST",
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify({ amount, memo }),
 });
-\`\`\`
+```
 
 ---
 
@@ -191,7 +191,7 @@ const res = await fetch("/api/auth/xaman/create-payload/xahau-payload", {
 
 The Next.js API route proxies the request to the Supabase Edge Function:
 
-\`\`\`ts
+```ts
 const edgeFunctionUrl = `${process.env.SUPABASE_URL}/functions/v1/xaman-createPayload-xahau`;
 const response = await fetch(edgeFunctionUrl, {
   method: "POST",
@@ -201,7 +201,7 @@ const response = await fetch(edgeFunctionUrl, {
   },
   body: JSON.stringify({ amount, memo })
 });
-\`\`\`
+```
 
 ---
 
@@ -209,7 +209,7 @@ const response = await fetch(edgeFunctionUrl, {
 
 The Edge Function creates a **Xahau Payment Payload** using Xaman SDK with credentials from Supabase Vault:
 
-\`\`\`ts
+```ts
 const XUMM_API_KEY = Deno.env.get("XUMM_API_KEY");
 const XUMM_API_SECRET = Deno.env.get("XUMM_API_SECRET");
 const XAH_DESTINATION = Deno.env.get("XAH_DESTINATION");
@@ -232,17 +232,17 @@ const response = await fetch("https://xumm.app/api/v1/platform/payload", {
   },
   body: JSON.stringify(payload)
 });
-\`\`\`
+```
 
 Returns:
 
-\`\`\`json
+```json
 { 
   "uuid": "...", 
   "next": { "always": "https://xumm.app/sign/..." },
   "refs": { "qr_png": "https://xumm.app/sign/..._q.png" }
 }
-\`\`\`
+```
 
 ---
 
@@ -266,7 +266,7 @@ The webhook validates:
 
 If validated, stores donation in Supabase database:
 
-\`\`\`ts
+```ts
 await supabase.from("donations").insert({
   network: "xahau",
   amount,
@@ -278,7 +278,7 @@ await supabase.from("donations").insert({
   payload_uuid: payloadUuid,
   completed_at: new Date().toISOString()
 });
-\`\`\`
+```
 
 ---
 
@@ -286,9 +286,9 @@ await supabase.from("donations").insert({
 
 The donations feed component fetches recent donations:
 
-\`\`\`ts
+```ts
 const donations = await fetch("/api/donations").then(r => r.json());
-\`\`\`
+```
 
 This displays real-time transaction history on the landing page.
 
@@ -354,13 +354,13 @@ Everything is intentionally minimal and customizable:
 
 ### Build Locally
 
-\`\`\`bash
+```bash
 docker build -t xbase .
-\`\`\`
+```
 
 ### Run Container
 
-\`\`\`bash
+```bash
 docker run -p 3000:3000 \
   -e NEXT_PUBLIC_SUPABASE_URL=https://xxx.supabase.co \
   -e NEXT_PUBLIC_SUPABASE_ANON_KEY=xxx \
@@ -368,15 +368,15 @@ docker run -p 3000:3000 \
   -e SUPABASE_SERVICE_ROLE_KEY=xxx \
   -e NEXT_PUBLIC_BASE_URL=https://your-domain.com \
   xbase
-\`\`\`
+```
 
 ### Docker Compose
 
-\`\`\`bash
+```bash
 cp .env.example .env
 # Edit .env with your values
 docker-compose up -d
-\`\`\`
+```
 
 ### Docker Deploy Prep
 
@@ -431,32 +431,32 @@ After getting xBase running, extend it:
 
 ### Test Payload Creation
 
-\`\`\`bash
+```bash
 curl -X POST http://localhost:3000/api/auth/xaman/create-payload/xahau-payload \
   -H "Content-Type: application/json" \
   -d '{"amount": 10, "memo": "Test donation"}'
-\`\`\`
+```
 
 Expected response:
 
-\`\`\`json
+```json
 {
   "ok": true,
   "uuid": "...",
   "nextUrl": "https://xumm.app/sign/...",
   "qrUrl": "https://xumm.app/sign/..._q.png"
 }
-\`\`\`
+```
 
 ### Test Donations API
 
-\`\`\`bash
+```bash
 curl http://localhost:3000/api/donations
-\`\`\`
+```
 
 Expected response:
 
-\`\`\`json
+```json
 {
   "donations": [
     {
@@ -472,7 +472,7 @@ Expected response:
     }
   ]
 }
-\`\`\`
+```
 
 ---
 
