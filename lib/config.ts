@@ -6,13 +6,13 @@ export const taxPortalConfig = {
   templateName: "xTax",
   
   // Provider/firm branding (customize for each deployment)
-  providerName: "Heavy Weight LLC",
-  providerDisplayName: "Heavy Weight Tax Services",
-  supportEmail: "support@heavyweighttax.com",
+  providerName: "xTax",
+  providerDisplayName: "xTax",
+  supportEmail: "support@xtax.io",
   supportPhone: "(555) 123-4567",
   
   // Payment settings
-  paymentLabel: "Heavy Weight LLC Tax Payment",
+  paymentLabel: "xTax Payment",
   enableStripe: true,
   enableXaman: true,
   paymentTiming: "after_review" as const, // "before_intake" | "after_review" | "before_filing" | "deposit"
