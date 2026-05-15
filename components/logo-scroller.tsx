@@ -5,7 +5,9 @@ import Image from "next/image"
 
 interface Logo {
   src: string
+  srcLight?: string // Optional light mode variant
   alt: string
+  invert?: boolean // Use CSS invert filter for light mode
 }
 
 interface LogoScrollerProps {
@@ -53,14 +55,28 @@ export function LogoScroller({ logos, logoHeight = 40, speed = 20, gap = 38, cla
                   className="relative shrink-0 transition-all duration-300"
                   style={{ height: `${logoHeight}px` }}
                 >
+                  {/* Dark mode logo (default) */}
                   <Image
                     src={logo.src || "/placeholder.svg"}
                     alt={logo.alt}
                     height={logoHeight}
                     width={logoHeight * 3}
-                    className="h-full w-auto object-contain brightness-50"
+                    className={`h-full w-auto object-contain brightness-50 ${
+                      logo.srcLight ? "dark:block hidden" : logo.invert ? "dark:invert-0 invert" : ""
+                    }`}
                     style={{ height: `${logoHeight}px`, width: "auto" }}
                   />
+                  {/* Light mode logo (if separate image provided) */}
+                  {logo.srcLight && (
+                    <Image
+                      src={logo.srcLight}
+                      alt={logo.alt}
+                      height={logoHeight}
+                      width={logoHeight * 3}
+                      className="h-full w-auto object-contain brightness-50 dark:hidden block"
+                      style={{ height: `${logoHeight}px`, width: "auto" }}
+                    />
+                  )}
                 </div>
               ))}
             </div>

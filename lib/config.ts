@@ -126,14 +126,17 @@ export const documentCategories = [
   { id: "other", label: "Other Supporting Documents", required: false, intakePaths: ["w2", "1099", "business"] },
 ] as const
 
-// Tech stack logos for marquee
+// Tech stack logos for marquee (with light/dark mode support)
+// src = dark mode logo (white/light colored for dark backgrounds)
+// srcLight = light mode logo (dark colored for light backgrounds)
+// invert = use CSS invert filter for light mode instead of separate image
 export const techLogos = [
-  { src: "https://assets.vercel.com/image/upload/v1607554385/repositories/next-js/next-logo.png", alt: "Next.js" },
+  { src: "https://assets.vercel.com/image/upload/v1607554385/repositories/next-js/next-logo.png", alt: "Next.js", invert: true },
   { src: "/images/supabase-logo-wordmark-dark.png", alt: "Supabase" },
-  { src: "https://tailwindcss.com/_next/static/media/tailwindcss-logotype-white.830c8e49.svg", alt: "Tailwind CSS" },
-  { src: "/images/xmerch_v2.png", alt: "xMerch" },
-  { src: "https://raw.githubusercontent.com/Xahau/Graphics/main/xahau-logo-white.svg", alt: "Xahau" },
-  { src: "https://raw.githubusercontent.com/XRPL-Labs/Xaman-Branding/main/Logo/xaman-logo-white.svg", alt: "Xaman" },
+  { src: "/images/tailwindcss-logotype-white.svg", srcLight: "/images/tailwindcss-logotype.svg", alt: "Tailwind CSS" },
+  { src: "/images/xmerch_v2.png", alt: "xMerch", invert: true },
+  { src: "https://raw.githubusercontent.com/Xahau/Graphics/main/xahau-logo-white.svg", alt: "Xahau", invert: true },
+  { src: "https://raw.githubusercontent.com/XRPL-Labs/Xaman-Branding/main/Logo/xaman-logo-white.svg", alt: "Xaman", invert: true },
 ]
 
 export type ServiceId = typeof services[number]["id"]
