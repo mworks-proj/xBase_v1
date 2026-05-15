@@ -1,396 +1,344 @@
 "use client"
 
+import { useEffect, useState } from "react"
+import Link from "next/link"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { taxPortalConfig } from "@/lib/config"
-import { CreditCard, Smartphone, Check, ArrowRight, Loader2, History, FileText } from "lucide-react"
-import { useState, useEffect } from "react"
+import { 
+  CreditCard, 
+  CheckCircle, 
+  Clock, 
+  DollarSign, 
+  ArrowRight,
+  Receipt,
+  Shield,
+  FileText,
+  Loader2
+} from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
-import Link from "next/link"
+import { TAX_SERVICES, formatPrice, type TaxService } from "@/lib/products"
 
-type TaxReturn = {
-  id: string
-  taxYear: number
-  filingStatus: string
-  prepFee: number | null
-  paymentStatus: string
-  estimatedRefund: number | null
-}
-
-type Payment = {
+interface Payment {
   id: string
   amount: number
-  paymentMethod: string
   status: string
-  createdAt: string
+  payment_method: string
+  description: string | null
+  created_at: string
+}
+
+interface TaxReturn {
+  id: string
+  tax_year: number
+  filing_status: string
+  status: string
+  payment_status: string
+  prep_fee: number | null
 }
 
 export default function PaymentsPage() {
-  const [selectedMethod, setSelectedMethod] = useState<"stripe" | "xaman" | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [taxReturn, setTaxReturn] = useState<TaxReturn | null>(null)
   const [payments, setPayments] = useState<Payment[]>([])
-  const [isProcessing, setIsProcessing] = useState(false)
+  const [taxReturns, setTaxReturns] = useState<TaxReturn[]>([])
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    async function loadData() {
+    async function fetchData() {
       const supabase = createClient()
       
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-
-      // Get the most recent tax return
-      const currentYear = new Date().getFullYear()
-      const { data: taxReturnData } = await supabase
-        .from("tax_returns")
-        .select("*")
-        .eq("user_id", user.id)
-        .eq("tax_year", currentYear)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .single()
-
-      if (taxReturnData) {
-        setTaxReturn({
-          id: taxReturnData.id,
-          taxYear: taxReturnData.tax_year,
-          filingStatus: taxReturnData.filing_status,
-          prepFee: taxReturnData.prep_fee,
-          paymentStatus: taxReturnData.payment_status,
-          estimatedRefund: taxReturnData.estimated_refund,
-        })
-
-        // Get payment history
-        const { data: paymentsData } = await supabase
+      const [paymentsResult, returnsResult] = await Promise.all([
+        supabase
           .from("payments")
           .select("*")
-          .eq("tax_return_id", taxReturnData.id)
-          .order("created_at", { ascending: false })
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("tax_returns")
+          .select("id, tax_year, filing_status, status, payment_status, prep_fee")
+          .order("created_at", { ascending: false }),
+      ])
 
-        if (paymentsData) {
-          setPayments(paymentsData.map(p => ({
-            id: p.id,
-            amount: Number(p.amount),
-            paymentMethod: p.payment_method,
-            status: p.status,
-            createdAt: p.created_at,
-          })))
-        }
+      if (paymentsResult.data) {
+        setPayments(paymentsResult.data)
       }
-      
-      setIsLoading(false)
+      if (returnsResult.data) {
+        setTaxReturns(returnsResult.data)
+      }
+      setLoading(false)
     }
 
-    loadData()
+    fetchData()
   }, [])
 
-  const totalPaid = payments.filter(p => p.status === "completed").reduce((sum, p) => sum + p.amount, 0)
-  const totalDue = taxReturn?.prepFee || taxPortalConfig.pricing.individual
-  const balance = totalDue - totalPaid
-  const isPaid = balance <= 0
+  // Calculate totals
+  const totalPaid = payments
+    .filter(p => p.status === "completed")
+    .reduce((sum, p) => sum + p.amount, 0)
 
-  const handlePayment = async () => {
-    if (!selectedMethod || !taxReturn) return
-    
-    setIsProcessing(true)
-    
-    // In a real app, this would integrate with Stripe or Xaman
-    // For now, simulate a successful payment
-    setTimeout(async () => {
-      const supabase = createClient()
-      
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+  const pendingAmount = taxReturns
+    .filter(r => r.payment_status === "pending" && r.prep_fee)
+    .reduce((sum, r) => sum + (r.prep_fee || 0), 0)
 
-      // Create payment record
-      const { data: newPayment } = await supabase
-        .from("payments")
-        .insert({
-          tax_return_id: taxReturn.id,
-          user_id: user.id,
-          amount: balance,
-          payment_method: selectedMethod,
-          status: "completed",
-        })
-        .select()
-        .single()
+  // Get unpaid tax returns
+  const unpaidReturns = taxReturns.filter(r => r.payment_status === "pending")
 
-      // Update tax return payment status
-      await supabase
-        .from("tax_returns")
-        .update({ payment_status: "paid" })
-        .eq("id", taxReturn.id)
-
-      if (newPayment) {
-        setPayments([{
-          id: newPayment.id,
-          amount: Number(newPayment.amount),
-          paymentMethod: newPayment.payment_method,
-          status: newPayment.status,
-          createdAt: newPayment.created_at,
-        }, ...payments])
-        
-        setTaxReturn({ ...taxReturn, paymentStatus: "paid" })
-      }
-      
-      setIsProcessing(false)
-      setSelectedMethod(null)
-    }, 2000)
-  }
-
-  if (isLoading) {
+  if (loading) {
     return (
-      <div className="py-8 px-4 sm:px-6 flex items-center justify-center min-h-[400px]">
-        <Loader2 className="w-8 h-8 animate-spin text-accent" />
-      </div>
-    )
-  }
-
-  if (!taxReturn) {
-    return (
-      <div className="py-8 px-4 sm:px-6">
-        <div className="max-w-4xl mx-auto text-center">
-          <FileText className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-          <h1 className="text-2xl font-bold text-foreground mb-2">No Tax Return Found</h1>
-          <p className="text-muted-foreground mb-6">
-            Please complete the tax intake form first.
-          </p>
-          <Button asChild>
-            <Link href="/portal/intake">Start Tax Intake</Link>
-          </Button>
-        </div>
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     )
   }
 
   return (
-    <div className="py-8 px-4 sm:px-6">
-      <div className="max-w-4xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-2">
-            Payments
-          </h1>
-          <p className="text-muted-foreground">
-            Manage your tax preparation payment for {taxReturn.taxYear}
-          </p>
-        </div>
+    <div className="space-y-8">
+      {/* Header */}
+      <div>
+        <h1 className="text-3xl font-bold">Payments</h1>
+        <p className="text-muted-foreground mt-1">
+          Manage your payments and view your billing history
+        </p>
+      </div>
 
-        {/* Payment Summary */}
-        <Card className="mb-8 border-accent/30 bg-accent/5">
-          <CardContent className="py-6">
-            <div className="grid sm:grid-cols-3 gap-6">
-              <div>
-                <p className="text-sm text-muted-foreground mb-1">Total Due</p>
-                <p className="text-2xl font-bold">${totalDue}</p>
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-full bg-green-500/10 flex items-center justify-center">
+                <CheckCircle className="w-6 h-6 text-green-500" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground mb-1">Amount Paid</p>
-                <p className="text-2xl font-bold text-success">${totalPaid}</p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground mb-1">Balance</p>
-                <p className={`text-2xl font-bold ${isPaid ? "text-success" : "text-foreground"}`}>
-                  ${Math.max(0, balance)}
+                <p className="text-sm text-muted-foreground">Total Paid</p>
+                <p className="text-2xl font-bold">
+                  {new Intl.NumberFormat("en-US", {
+                    style: "currency",
+                    currency: "USD",
+                  }).format(totalPaid)}
                 </p>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {isPaid ? (
-          <Card className="bg-success/5 border-success/30">
-            <CardContent className="py-8 text-center">
-              <div className="w-16 h-16 rounded-full bg-success/10 flex items-center justify-center mx-auto mb-4">
-                <Check className="w-8 h-8 text-success" />
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-full bg-yellow-500/10 flex items-center justify-center">
+                <Clock className="w-6 h-6 text-yellow-500" />
               </div>
-              <h3 className="text-xl font-semibold mb-2">Payment Complete</h3>
-              <p className="text-muted-foreground">
-                Thank you for your payment. Your tax preparation is in progress.
-              </p>
-            </CardContent>
-          </Card>
-        ) : (
-          <>
-            {/* Payment Methods */}
-            <div className="mb-8">
-              <h2 className="text-lg font-semibold mb-4">Select Payment Method</h2>
-              <div className="grid sm:grid-cols-2 gap-4">
-                {/* Card Payment */}
-                {taxPortalConfig.enableStripe && (
-                  <Card
-                    className={`cursor-pointer transition-all duration-300 ${
-                      selectedMethod === "stripe"
-                        ? "border-accent bg-accent/10"
-                        : "bg-card/50 border-border hover:border-accent/50"
-                    }`}
-                    onClick={() => !isProcessing && setSelectedMethod("stripe")}
-                  >
-                    <CardHeader>
-                      <div className="flex items-center justify-between">
-                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
-                          <CreditCard className="w-6 h-6 text-white" />
-                        </div>
-                        {selectedMethod === "stripe" && (
-                          <div className="w-6 h-6 rounded-full bg-accent flex items-center justify-center">
-                            <Check className="w-4 h-4 text-accent-foreground" />
-                          </div>
-                        )}
-                      </div>
-                      <CardTitle className="text-lg">Card Payment</CardTitle>
-                      <CardDescription>Pay with Visa, Mastercard, or other cards</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <ul className="space-y-2 text-sm text-muted-foreground">
-                        <li className="flex items-center gap-2">
-                          <span className="w-1.5 h-1.5 rounded-full bg-accent" />
-                          Secure checkout powered by Stripe
-                        </li>
-                        <li className="flex items-center gap-2">
-                          <span className="w-1.5 h-1.5 rounded-full bg-accent" />
-                          Instant payment confirmation
-                        </li>
-                      </ul>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* Crypto Payment */}
-                {taxPortalConfig.enableXaman && (
-                  <Card
-                    className={`cursor-pointer transition-all duration-300 ${
-                      selectedMethod === "xaman"
-                        ? "border-accent bg-accent/10"
-                        : "bg-card/50 border-border hover:border-accent/50"
-                    }`}
-                    onClick={() => !isProcessing && setSelectedMethod("xaman")}
-                  >
-                    <CardHeader>
-                      <div className="flex items-center justify-between">
-                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500 to-teal-600 flex items-center justify-center">
-                          <Smartphone className="w-6 h-6 text-white" />
-                        </div>
-                        {selectedMethod === "xaman" && (
-                          <div className="w-6 h-6 rounded-full bg-accent flex items-center justify-center">
-                            <Check className="w-4 h-4 text-accent-foreground" />
-                          </div>
-                        )}
-                      </div>
-                      <CardTitle className="text-lg">Crypto Payment</CardTitle>
-                      <CardDescription>Pay with XRP or XAH via Xaman wallet</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <ul className="space-y-2 text-sm text-muted-foreground">
-                        <li className="flex items-center gap-2">
-                          <span className="w-1.5 h-1.5 rounded-full bg-accent" />
-                          XRPL and Xahau supported
-                        </li>
-                        <li className="flex items-center gap-2">
-                          <span className="w-1.5 h-1.5 rounded-full bg-accent" />
-                          Fast on-ledger settlement
-                        </li>
-                      </ul>
-                    </CardContent>
-                  </Card>
-                )}
+              <div>
+                <p className="text-sm text-muted-foreground">Pending</p>
+                <p className="text-2xl font-bold">
+                  {new Intl.NumberFormat("en-US", {
+                    style: "currency",
+                    currency: "USD",
+                  }).format(pendingAmount)}
+                </p>
               </div>
             </div>
+          </CardContent>
+        </Card>
 
-            {/* Payment Button */}
-            {selectedMethod && (
-              <Card className="bg-card/50 border-border">
-                <CardContent className="py-6">
-                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                <Receipt className="w-6 h-6 text-primary" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Transactions</p>
+                <p className="text-2xl font-bold">{payments.length}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Pending Payments */}
+      {unpaidReturns.length > 0 && (
+        <Card className="border-yellow-500/30 bg-yellow-500/5">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Clock className="w-5 h-5 text-yellow-500" />
+              Pending Payments
+            </CardTitle>
+            <CardDescription>
+              Complete payment to start your tax preparation
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {unpaidReturns.map((taxReturn) => (
+                <div
+                  key={taxReturn.id}
+                  className="flex items-center justify-between p-4 bg-background rounded-lg border"
+                >
+                  <div>
+                    <p className="font-medium">
+                      {taxReturn.tax_year} Tax Return
+                    </p>
+                    <p className="text-sm text-muted-foreground capitalize">
+                      {taxReturn.filing_status.replace(/_/g, " ")}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    {taxReturn.prep_fee && (
+                      <span className="font-medium">
+                        {new Intl.NumberFormat("en-US", {
+                          style: "currency",
+                          currency: "USD",
+                        }).format(taxReturn.prep_fee)}
+                      </span>
+                    )}
+                    <Link href={`/portal/payments/checkout?return=${taxReturn.id}&service=individual-simple`}>
+                      <Button size="sm">
+                        <CreditCard className="w-4 h-4 mr-2" />
+                        Pay Now
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Available Services */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FileText className="w-5 h-5" />
+            Tax Preparation Services
+          </CardTitle>
+          <CardDescription>
+            Select a service to get started with your tax preparation
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {TAX_SERVICES.slice(0, 6).map((service) => (
+              <ServiceCard key={service.id} service={service} />
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Payment History */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <DollarSign className="w-5 h-5" />
+            Payment History
+          </CardTitle>
+          <CardDescription>
+            View all your past transactions
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {payments.length === 0 ? (
+            <div className="text-center py-8">
+              <Receipt className="w-12 h-12 mx-auto text-muted-foreground/50 mb-3" />
+              <p className="text-muted-foreground">No payment history yet</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Your transactions will appear here after your first payment
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {payments.map((payment) => (
+                <div
+                  key={payment.id}
+                  className="flex items-center justify-between p-4 bg-muted/30 rounded-lg"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                      payment.status === "completed" 
+                        ? "bg-green-500/10" 
+                        : payment.status === "failed"
+                        ? "bg-red-500/10"
+                        : "bg-yellow-500/10"
+                    }`}>
+                      {payment.status === "completed" ? (
+                        <CheckCircle className="w-5 h-5 text-green-500" />
+                      ) : payment.status === "failed" ? (
+                        <DollarSign className="w-5 h-5 text-red-500" />
+                      ) : (
+                        <Clock className="w-5 h-5 text-yellow-500" />
+                      )}
+                    </div>
                     <div>
                       <p className="font-medium">
-                        Pay ${balance} via {selectedMethod === "stripe" ? "Card" : "Crypto"}
+                        {payment.description || "Tax Preparation Service"}
                       </p>
                       <p className="text-sm text-muted-foreground">
-                        {taxPortalConfig.paymentLabel}
+                        {new Date(payment.created_at).toLocaleDateString("en-US", {
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                        })}
                       </p>
                     </div>
-                    <Button 
-                      size="lg" 
-                      className="gap-2 w-full sm:w-auto"
-                      onClick={handlePayment}
-                      disabled={isProcessing}
-                    >
-                      {isProcessing ? (
-                        <>
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                          Processing...
-                        </>
-                      ) : (
-                        <>
-                          {selectedMethod === "stripe" ? "Pay with Card" : "Open Xaman"}
-                          <ArrowRight className="w-4 h-4" />
-                        </>
-                      )}
-                    </Button>
                   </div>
-                </CardContent>
-              </Card>
-            )}
-
-            <p className="text-xs text-muted-foreground text-center mt-6">
-              Payment timing: {taxPortalConfig.paymentTiming === "after_review" 
-                ? "Payment due after document review"
-                : taxPortalConfig.paymentTiming === "before_intake"
-                ? "Payment due before starting intake"
-                : taxPortalConfig.paymentTiming === "before_filing"
-                ? "Payment due before filing"
-                : "Deposit required, balance due at filing"}
-            </p>
-          </>
-        )}
-
-        {/* Payment History */}
-        {payments.length > 0 && (
-          <Card className="mt-8 bg-card/50 border-border">
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <History className="w-5 h-5" />
-                Payment History
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {payments.map((payment) => (
-                  <div 
-                    key={payment.id}
-                    className="flex items-center justify-between p-3 rounded-lg bg-secondary/30"
-                  >
-                    <div>
-                      <p className="font-medium">${payment.amount}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {payment.paymentMethod === "stripe" ? "Card Payment" : "Crypto Payment"} - {new Date(payment.createdAt).toLocaleDateString()}
-                      </p>
-                    </div>
-                    <span className={`text-xs px-2 py-1 rounded-full ${
+                  <div className="text-right">
+                    <p className="font-medium">
+                      {new Intl.NumberFormat("en-US", {
+                        style: "currency",
+                        currency: "USD",
+                      }).format(payment.amount)}
+                    </p>
+                    <p className={`text-sm capitalize ${
                       payment.status === "completed" 
-                        ? "bg-success/10 text-success" 
-                        : payment.status === "pending"
-                        ? "bg-yellow-500/10 text-yellow-500"
-                        : "bg-destructive/10 text-destructive"
+                        ? "text-green-500" 
+                        : payment.status === "failed"
+                        ? "text-red-500"
+                        : "text-yellow-500"
                     }`}>
-                      {payment.status.charAt(0).toUpperCase() + payment.status.slice(1)}
-                    </span>
+                      {payment.status}
+                    </p>
                   </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
-        {/* Navigation */}
-        <div className="flex justify-between mt-8">
-          <Button variant="outline" asChild>
-            <Link href="/portal/documents">Back to Documents</Link>
-          </Button>
-          <Button asChild>
-            <Link href="/portal">Return to Dashboard</Link>
-          </Button>
-        </div>
+      {/* Security Note */}
+      <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+        <Shield className="w-4 h-4" />
+        <span>All payments are processed securely via Stripe</span>
       </div>
+    </div>
+  )
+}
+
+function ServiceCard({ service }: { service: TaxService }) {
+  return (
+    <div className="border rounded-lg p-4 hover:border-primary/50 transition-colors">
+      <div className="flex justify-between items-start mb-2">
+        <h3 className="font-medium">{service.name}</h3>
+        <span className="text-lg font-bold text-primary">
+          {formatPrice(service.priceInCents)}
+        </span>
+      </div>
+      <p className="text-sm text-muted-foreground mb-3">{service.description}</p>
+      <ul className="text-xs text-muted-foreground space-y-1 mb-4">
+        {service.features.slice(0, 3).map((feature, i) => (
+          <li key={i} className="flex items-center gap-1">
+            <CheckCircle className="w-3 h-3 text-green-500" />
+            {feature}
+          </li>
+        ))}
+        {service.features.length > 3 && (
+          <li className="text-primary">+{service.features.length - 3} more</li>
+        )}
+      </ul>
+      <Link href={`/portal/payments/checkout?service=${service.id}`}>
+        <Button size="sm" className="w-full">
+          Select
+          <ArrowRight className="w-4 h-4 ml-2" />
+        </Button>
+      </Link>
     </div>
   )
 }
