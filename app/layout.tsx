@@ -9,7 +9,6 @@ const _geist = Geist({ subsets: ["latin"] })
 const _geistMono = Geist_Mono({ subsets: ["latin"] })
 
 const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
-const ogImageUrl = `${baseUrl}/images/xtax-og.png`
 
 export const metadata: Metadata = {
   title: `${taxPortalConfig.providerDisplayName} | Secure Tax Services Portal`,
@@ -25,14 +24,6 @@ export const metadata: Metadata = {
     description: `Professional tax preparation services. Submit your documents securely and track your return status.`,
     url: baseUrl,
     siteName: taxPortalConfig.providerDisplayName,
-    images: [
-      {
-        url: ogImageUrl,
-        width: 1200,
-        height: 630,
-        alt: `${taxPortalConfig.providerDisplayName} - Professional Tax Services`,
-      },
-    ],
     type: "website",
     locale: "en_US",
   },
@@ -40,7 +31,6 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: `${taxPortalConfig.providerDisplayName} | Secure Tax Services Portal`,
     description: `Professional tax preparation services. Submit your documents securely and track your return status.`,
-    images: [ogImageUrl],
   },
 }
 
