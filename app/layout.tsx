@@ -24,6 +24,14 @@ export const metadata: Metadata = {
     description: `Professional tax preparation services. Submit your documents securely and track your return status.`,
     url: baseUrl,
     siteName: taxPortalConfig.providerDisplayName,
+    images: [
+      {
+        url: `${baseUrl}/api/og`,
+        width: 1200,
+        height: 630,
+        alt: `${taxPortalConfig.providerDisplayName} - Professional Tax Services`,
+      },
+    ],
     type: "website",
     locale: "en_US",
   },
@@ -31,6 +39,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: `${taxPortalConfig.providerDisplayName} | Secure Tax Services Portal`,
     description: `Professional tax preparation services. Submit your documents securely and track your return status.`,
+    images: [`${baseUrl}/api/og`],
   },
 }
 

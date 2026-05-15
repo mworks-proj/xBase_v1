@@ -97,7 +97,7 @@ export const services = [
       "Dedicated support",
     ],
     intakePath: "business",
-  }, image
+  },
 ] as const
 
 // Tax case statuses (match database status field values)
