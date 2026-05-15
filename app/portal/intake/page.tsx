@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useTransition } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -13,9 +13,10 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
-import { ArrowRight, ArrowLeft, CheckCircle, FileText, Briefcase, Building2 } from "lucide-react"
+import { ArrowRight, ArrowLeft, CheckCircle, FileText, Briefcase, Building2, Loader2 } from "lucide-react"
 import Link from "next/link"
 import type { FilingStatus, IntakePath } from "@/types/tax"
+import { submitIntake } from "./actions"
 
 const intakePaths = [
   {
@@ -49,6 +50,8 @@ const filingStatuses: { value: FilingStatus; label: string }[] = [
 export default function IntakePage() {
   const [step, setStep] = useState(1)
   const [selectedPath, setSelectedPath] = useState<IntakePath | null>(null)
+  const [isPending, startTransition] = useTransition()
+  const [error, setError] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
@@ -79,8 +82,21 @@ export default function IntakePage() {
   }
 
   const handleSubmit = () => {
-    // Mock submission - would save to database
-    setStep(totalSteps + 1) // Go to success step
+    if (!selectedPath) return
+    
+    setError(null)
+    startTransition(async () => {
+      const result = await submitIntake({
+        intakePath: selectedPath,
+        ...formData,
+      })
+      
+      if (result.error) {
+        setError(result.error)
+      } else {
+        setStep(totalSteps + 1) // Go to success step
+      }
+    })
   }
 
   const renderPathSelection = () => (
@@ -534,6 +550,13 @@ export default function IntakePage() {
             {step > 1 && step <= totalSteps && selectedPath === "business" && renderBusinessForm()}
             {step > totalSteps && renderSuccess()}
 
+            {/* Error Display */}
+            {error && (
+              <div className="mt-4 p-4 rounded-lg border border-destructive/30 bg-destructive/10 text-destructive text-sm">
+                {error}
+              </div>
+            )}
+
             {/* Navigation Buttons */}
             {step > 1 && step <= totalSteps && (
               <div className="flex justify-between mt-8">
@@ -551,9 +574,18 @@ export default function IntakePage() {
                     <ArrowRight className="w-4 h-4" />
                   </Button>
                 ) : (
-                  <Button onClick={handleSubmit} className="gap-2">
-                    Submit Intake
-                    <CheckCircle className="w-4 h-4" />
+                  <Button onClick={handleSubmit} disabled={isPending} className="gap-2">
+                    {isPending ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Submitting...
+                      </>
+                    ) : (
+                      <>
+                        Submit Intake
+                        <CheckCircle className="w-4 h-4" />
+                      </>
+                    )}
                   </Button>
                 )}
               </div>

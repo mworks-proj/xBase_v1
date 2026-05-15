@@ -94,16 +94,15 @@ export const services = [
   },
 ] as const
 
-// Tax case statuses
+// Tax case statuses (match database status field values)
 export const caseStatuses = {
-  new_intake: { label: "New Intake", color: "bg-blue-500" },
-  awaiting_payment: { label: "Awaiting Payment", color: "bg-yellow-500" },
-  missing_documents: { label: "Missing Documents", color: "bg-orange-500" },
-  ready_for_review: { label: "Ready for Review", color: "bg-purple-500" },
-  in_progress: { label: "In Progress", color: "bg-indigo-500" },
-  client_review: { label: "Client Review", color: "bg-cyan-500" },
+  intake: { label: "New Intake", color: "bg-blue-500" },
+  documents_pending: { label: "Documents Pending", color: "bg-orange-500" },
+  in_review: { label: "In Review", color: "bg-indigo-500" },
+  ready_for_review: { label: "Ready for Client Review", color: "bg-purple-500" },
+  approved: { label: "Approved", color: "bg-teal-500" },
   filed: { label: "Filed", color: "bg-green-500" },
-  complete: { label: "Complete", color: "bg-emerald-500" },
+  completed: { label: "Completed", color: "bg-emerald-500" },
 } as const
 
 // Document categories

@@ -33,24 +33,50 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  // Protect /portal routes - redirect to login if not authenticated
-  if (request.nextUrl.pathname.startsWith("/portal") && !user) {
+  const pathname = request.nextUrl.pathname
+
+  // Protected routes - require authentication
+  const protectedPaths = ["/portal", "/admin"]
+  const isProtectedPath = protectedPaths.some((path) =>
+    pathname.startsWith(path)
+  )
+
+  if (isProtectedPath && !user) {
     const url = request.nextUrl.clone()
     url.pathname = "/login"
+    url.searchParams.set("redirect", pathname)
     return NextResponse.redirect(url)
   }
 
-  // Protect /admin routes - redirect to login if not authenticated
-  if (request.nextUrl.pathname.startsWith("/admin") && !user) {
-    const url = request.nextUrl.clone()
-    url.pathname = "/login"
-    return NextResponse.redirect(url)
+  // Admin routes - require admin role
+  if (pathname.startsWith("/admin") && user) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("is_admin")
+      .eq("id", user.id)
+      .single()
+
+    if (!profile?.is_admin) {
+      const url = request.nextUrl.clone()
+      url.pathname = "/portal"
+      return NextResponse.redirect(url)
+    }
   }
 
-  // Redirect authenticated users away from login/register pages
-  if ((request.nextUrl.pathname === "/login" || request.nextUrl.pathname === "/register") && user) {
+  // Redirect authenticated users away from auth pages
+  const authPaths = ["/login", "/register"]
+  const isAuthPath = authPaths.some((path) => pathname.startsWith(path))
+
+  if (isAuthPath && user) {
+    // Check if user is admin and redirect accordingly
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("is_admin")
+      .eq("id", user.id)
+      .single()
+
     const url = request.nextUrl.clone()
-    url.pathname = "/portal"
+    url.pathname = profile?.is_admin ? "/admin" : "/portal"
     return NextResponse.redirect(url)
   }
 

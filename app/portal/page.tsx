@@ -1,8 +1,9 @@
 import { createClient } from "@/lib/supabase/server"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { taxPortalConfig, caseStatuses, documentCategories } from "@/lib/config"
+import { taxPortalConfig, caseStatuses } from "@/lib/config"
 import Link from "next/link"
+import { redirect } from "next/navigation"
 import { 
   FileText, 
   Upload, 
@@ -14,36 +15,69 @@ import {
   ArrowRight
 } from "lucide-react"
 
-// Mock data for demo - will be replaced with real data
-const mockCase = {
-  id: "case-001",
-  status: "new_intake" as const,
-  intake_path: "w2" as const,
-  tax_year: 2025,
-  total_amount: 149,
-  amount_paid: 0,
-  created_at: new Date().toISOString(),
-}
-
-const mockDocuments = [
-  { id: "1", category: "w2", uploaded: false },
-  { id: "2", category: "government_id", uploaded: false },
-]
-
 export default async function PortalDashboard() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  const fullName = user?.user_metadata?.full_name || "Client"
-  const firstName = fullName.split(" ")[0]
+  if (!user) {
+    redirect("/login")
+  }
 
-  // Calculate progress
-  const intakeComplete = false // Mock
-  const documentsUploaded = mockDocuments.filter(d => d.uploaded).length
-  const documentsRequired = mockDocuments.length
-  const paymentComplete = mockCase.amount_paid >= (mockCase.total_amount || 0)
+  // Fetch user profile
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("id", user.id)
+    .single()
 
-  const statusInfo = caseStatuses[mockCase.status]
+  // Fetch active tax return for current year
+  const currentYear = new Date().getFullYear()
+  const { data: taxReturn } = await supabase
+    .from("tax_returns")
+    .select("*")
+    .eq("user_id", user.id)
+    .eq("tax_year", currentYear)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .single()
+
+  // Fetch intake data if tax return exists
+  const { data: intakeData } = taxReturn 
+    ? await supabase
+        .from("intake_data")
+        .select("*")
+        .eq("tax_return_id", taxReturn.id)
+        .single()
+    : { data: null }
+
+  // Fetch documents count
+  const { count: documentsCount } = taxReturn
+    ? await supabase
+        .from("tax_documents")
+        .select("*", { count: "exact", head: true })
+        .eq("tax_return_id", taxReturn.id)
+    : { count: 0 }
+
+  // Fetch payments total
+  const { data: payments } = taxReturn
+    ? await supabase
+        .from("payments")
+        .select("amount, status")
+        .eq("tax_return_id", taxReturn.id)
+        .eq("status", "completed")
+    : { data: [] }
+
+  const totalPaid = payments?.reduce((sum, p) => sum + Number(p.amount), 0) ?? 0
+  const prepFee = taxReturn?.prep_fee ?? 149
+  const paymentComplete = totalPaid >= prepFee
+
+  const firstName = profile?.first_name || user.email?.split("@")[0] || "Client"
+  const intakeComplete = !!intakeData?.completed_at
+  const documentsUploaded = documentsCount ?? 0
+  const documentsRequired = 2 // Minimum required: W-2 and ID
+
+  const status = taxReturn?.status || "intake"
+  const statusInfo = caseStatuses[status as keyof typeof caseStatuses] || caseStatuses.intake
 
   return (
     <div className="py-8 px-4 sm:px-6">
@@ -65,7 +99,7 @@ export default async function PortalDashboard() {
               <div className={`w-3 h-3 rounded-full ${statusInfo.color}`} />
               <div>
                 <p className="font-medium">Current Status: {statusInfo.label}</p>
-                <p className="text-sm text-muted-foreground">Tax Year {mockCase.tax_year}</p>
+                <p className="text-sm text-muted-foreground">Tax Year {taxReturn?.tax_year || currentYear}</p>
               </div>
             </div>
             <Link href="/portal/status">
@@ -109,7 +143,7 @@ export default async function PortalDashboard() {
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <Upload className="w-5 h-5 text-muted-foreground" />
-                {documentsUploaded === documentsRequired ? (
+                {documentsUploaded >= documentsRequired ? (
                   <CheckCircle className="w-5 h-5 text-success" />
                 ) : (
                   <Clock className="w-5 h-5 text-orange-500" />
@@ -117,12 +151,12 @@ export default async function PortalDashboard() {
               </div>
               <CardTitle className="text-base">Documents</CardTitle>
               <CardDescription>
-                {documentsUploaded} of {documentsRequired} uploaded
+                {documentsUploaded} uploaded
               </CardDescription>
             </CardHeader>
             <CardContent>
               <Link href="/portal/documents">
-                <Button size="sm" className="w-full" variant={documentsUploaded === documentsRequired ? "outline" : "default"}>
+                <Button size="sm" className="w-full" variant={documentsUploaded >= documentsRequired ? "outline" : "default"}>
                   Upload Documents
                 </Button>
               </Link>
@@ -142,7 +176,7 @@ export default async function PortalDashboard() {
               </div>
               <CardTitle className="text-base">Payment</CardTitle>
               <CardDescription>
-                {paymentComplete ? "Paid in full" : `$${mockCase.amount_paid} of $${mockCase.total_amount}`}
+                {paymentComplete ? "Paid in full" : `$${totalPaid} of $${prepFee}`}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -222,7 +256,7 @@ export default async function PortalDashboard() {
                 </div>
               )}
 
-              {intakeComplete && documentsUploaded === documentsRequired && (
+              {intakeComplete && documentsUploaded >= documentsRequired && (
                 <div className="flex items-center gap-4 p-4 rounded-lg border border-success/30 bg-success/5">
                   <CheckCircle className="w-6 h-6 text-success" />
                   <div>
@@ -237,14 +271,14 @@ export default async function PortalDashboard() {
           </CardContent>
         </Card>
 
-        {/* Preparer Note Placeholder */}
+        {/* Preparer Note */}
         <Card className="mt-6 bg-card/50 border-border">
           <CardHeader>
             <CardTitle className="text-base">Notes from Your Preparer</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground italic">
-              No notes yet. Your preparer will leave updates here as they work on your return.
+              {taxReturn?.notes || "No notes yet. Your preparer will leave updates here as they work on your return."}
             </p>
           </CardContent>
         </Card>
