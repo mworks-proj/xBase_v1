@@ -131,7 +131,7 @@ export const techLogos = [
   { src: "https://assets.vercel.com/image/upload/v1607554385/repositories/next-js/next-logo.png", alt: "Next.js" },
   { src: "/images/supabase-logo-wordmark-dark.png", alt: "Supabase" },
   { src: "https://tailwindcss.com/_next/static/media/tailwindcss-logotype-white.830c8e49.svg", alt: "Tailwind CSS" },
-  { src: "/images/xrpl-logo.png", alt: "XRPL" },
+  { src: "/images/xmerch_v2.png", alt: "xMerch" },
   { src: "https://raw.githubusercontent.com/Xahau/Graphics/main/xahau-logo-white.svg", alt: "Xahau" },
   { src: "https://raw.githubusercontent.com/XRPL-Labs/Xaman-Branding/main/Logo/xaman-logo-white.svg", alt: "Xaman" },
 ]
