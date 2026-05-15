@@ -313,11 +313,13 @@ export default function PaymentsPage() {
 }
 
 function ServiceCard({ service }: { service: TaxService }) {
+  const isCustom = service.isCustomQuote === true
+
   return (
     <div className="border rounded-lg p-4 hover:border-primary/50 transition-colors">
       <div className="flex justify-between items-start mb-2">
         <h3 className="font-medium">{service.name}</h3>
-        <span className="text-lg font-bold text-primary">
+        <span className={`text-lg font-bold ${isCustom ? "text-muted-foreground" : "text-primary"}`}>
           {formatPrice(service.priceInCents)}
         </span>
       </div>
@@ -333,12 +335,21 @@ function ServiceCard({ service }: { service: TaxService }) {
           <li className="text-primary">+{service.features.length - 3} more</li>
         )}
       </ul>
-      <Link href={`/portal/payments/checkout?service=${service.id}`}>
-        <Button size="sm" className="w-full">
-          Select
-          <ArrowRight className="w-4 h-4 ml-2" />
-        </Button>
-      </Link>
+      {isCustom ? (
+        <Link href="/get-started?service=business">
+          <Button size="sm" variant="outline" className="w-full">
+            Get Quote
+            <ArrowRight className="w-4 h-4 ml-2" />
+          </Button>
+        </Link>
+      ) : (
+        <Link href={`/portal/payments/checkout?service=${service.id}`}>
+          <Button size="sm" className="w-full">
+            Select
+            <ArrowRight className="w-4 h-4 ml-2" />
+          </Button>
+        </Link>
+      )}
     </div>
   )
 }

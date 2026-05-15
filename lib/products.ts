@@ -4,17 +4,19 @@ export interface TaxService {
   description: string
   priceInCents: number
   features: string[]
+  isCustomQuote?: boolean
 }
 
 // Tax preparation service products
+// Prices are validated server-side - clients cannot manipulate these values
 export const TAX_SERVICES: TaxService[] = [
   {
-    id: "individual-simple",
-    name: "Simple Tax Return",
+    id: "simple-w2",
+    name: "Simple W-2 Return",
     description: "W-2 income only, standard deduction",
-    priceInCents: 9900, // $99
+    priceInCents: 14900, // $149
     features: [
-      "W-2 income",
+      "W-2 income only",
       "Standard deduction",
       "Basic credits (EIC, Child Tax Credit)",
       "E-file included",
@@ -22,71 +24,45 @@ export const TAX_SERVICES: TaxService[] = [
     ],
   },
   {
-    id: "individual-itemized",
-    name: "Itemized Tax Return",
-    description: "W-2 income with itemized deductions",
-    priceInCents: 14900, // $149
+    id: "w2-dependents",
+    name: "W-2 + Dependents",
+    description: "W-2 income with dependents and credits",
+    priceInCents: 19900, // $199
     features: [
-      "Everything in Simple",
-      "Itemized deductions",
-      "Mortgage interest",
-      "Charitable donations",
-      "Medical expenses",
-      "State & local taxes",
+      "Everything in Simple W-2",
+      "Dependent credits",
+      "Child Tax Credit optimization",
+      "Education credits",
+      "Childcare expense credits",
     ],
   },
   {
-    id: "individual-complex",
-    name: "Complex Tax Return",
-    description: "Multiple income sources, investments, rental income",
-    priceInCents: 24900, // $249
+    id: "self-employed",
+    name: "1099 / Self-Employed Return",
+    description: "Freelance, contract, or gig economy income",
+    priceInCents: 29900, // $299
     features: [
-      "Everything in Itemized",
-      "1099 income (freelance, contract)",
-      "Investment income (stocks, crypto)",
-      "Rental property income",
+      "1099-NEC / 1099-MISC income",
       "Schedule C (self-employment)",
-      "Schedule E (rental/royalty)",
-    ],
-  },
-  {
-    id: "business-sole-prop",
-    name: "Sole Proprietor / LLC",
-    description: "Small business or single-member LLC",
-    priceInCents: 34900, // $349
-    features: [
-      "Schedule C business income",
-      "Business expenses & deductions",
+      "Business expense deductions",
       "Home office deduction",
-      "Vehicle expenses",
-      "Quarterly estimated taxes",
-      "Business asset depreciation",
+      "Quarterly estimated tax guidance",
+      "Vehicle/mileage deductions",
     ],
   },
   {
-    id: "business-partnership",
-    name: "Partnership / Multi-Member LLC",
-    description: "Form 1065 partnership return",
-    priceInCents: 59900, // $599
+    id: "small-business",
+    name: "Small Business Tax Prep",
+    description: "LLC, S-Corp, or Partnership returns",
+    priceInCents: 0, // Custom quote - do not create checkout
+    isCustomQuote: true,
     features: [
-      "Form 1065 preparation",
-      "K-1 distribution",
-      "Partner allocations",
+      "Business entity returns (1120-S, 1065)",
+      "K-1 preparation",
       "Business deductions",
-      "Entity-level reporting",
-    ],
-  },
-  {
-    id: "business-scorp",
-    name: "S-Corporation",
-    description: "Form 1120-S corporate return",
-    priceInCents: 79900, // $799
-    features: [
-      "Form 1120-S preparation",
-      "Shareholder K-1s",
-      "Officer compensation",
-      "Corporate deductions",
-      "State filing coordination",
+      "Payroll tax coordination",
+      "State filing included",
+      "Year-round support",
     ],
   },
 ]
@@ -98,8 +74,17 @@ export function getServiceById(id: string): TaxService | undefined {
 
 // Helper to format price
 export function formatPrice(priceInCents: number): string {
+  if (priceInCents === 0) {
+    return "Custom Quote"
+  }
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
   }).format(priceInCents / 100)
+}
+
+// Check if a service requires a custom quote
+export function isCustomQuote(serviceId: string): boolean {
+  const service = getServiceById(serviceId)
+  return service?.isCustomQuote === true
 }

@@ -71,10 +71,23 @@ async function handleSuccessfulPayment(session: Stripe.Checkout.Session) {
   const userId = session.metadata?.user_id
   const taxReturnId = session.metadata?.tax_return_id
   const serviceName = session.metadata?.service_name
-  const serviceId = session.metadata?.service_id
 
   if (!userId) {
     console.error("No user_id in session metadata")
+    return
+  }
+
+  const supabaseAdmin = getSupabaseAdmin()
+
+  // Idempotency check: verify this session hasn't already been processed
+  const { data: existingPayment } = await supabaseAdmin
+    .from("payments")
+    .select("id")
+    .eq("stripe_checkout_session_id", session.id)
+    .single()
+
+  if (existingPayment) {
+    console.log(`Payment for session ${session.id} already processed, skipping`)
     return
   }
 
@@ -95,8 +108,6 @@ async function handleSuccessfulPayment(session: Stripe.Checkout.Session) {
   if (taxReturnId) {
     paymentData.tax_return_id = taxReturnId
   }
-
-  const supabaseAdmin = getSupabaseAdmin()
 
   const { error: paymentError } = await supabaseAdmin
     .from("payments")
@@ -135,6 +146,20 @@ async function handleFailedPayment(session: Stripe.Checkout.Session) {
     return
   }
 
+  const supabaseAdmin = getSupabaseAdmin()
+
+  // Idempotency check: verify this session hasn't already been processed
+  const { data: existingPayment } = await supabaseAdmin
+    .from("payments")
+    .select("id")
+    .eq("stripe_checkout_session_id", session.id)
+    .single()
+
+  if (existingPayment) {
+    console.log(`Failed payment for session ${session.id} already recorded, skipping`)
+    return
+  }
+
   // Create failed payment record
   const paymentData: Record<string, unknown> = {
     user_id: userId,
@@ -150,8 +175,6 @@ async function handleFailedPayment(session: Stripe.Checkout.Session) {
   if (taxReturnId) {
     paymentData.tax_return_id = taxReturnId
   }
-
-  const supabaseAdmin = getSupabaseAdmin()
 
   const { error } = await supabaseAdmin
     .from("payments")

@@ -1,7 +1,7 @@
 "use server"
 
 import { stripe } from "@/lib/stripe"
-import { getServiceById, TAX_SERVICES } from "@/lib/products"
+import { getServiceById, isCustomQuote, TAX_SERVICES } from "@/lib/products"
 import { createClient } from "@/lib/supabase/server"
 import { headers } from "next/headers"
 
@@ -19,6 +19,11 @@ export async function createCheckoutSession(
     const service = getServiceById(serviceId)
     if (!service) {
       return { error: "Invalid service selected" }
+    }
+
+    // Reject custom quote services - these require manual consultation
+    if (isCustomQuote(serviceId)) {
+      return { error: "This service requires a custom quote. Please contact us." }
     }
 
     // Get the authenticated user
