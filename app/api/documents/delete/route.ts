@@ -18,6 +18,15 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "No document ID provided" }, { status: 400 })
     }
 
+    // Check if user is admin
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("is_admin")
+      .eq("id", user.id)
+      .single()
+
+    const isAdmin = profile?.is_admin === true
+
     // Get document and verify ownership
     const { data: document, error: docError } = await supabase
       .from("tax_documents")
@@ -29,8 +38,8 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "Document not found" }, { status: 404 })
     }
 
-    // Only allow deletion if user owns the document
-    if (document.user_id !== user.id) {
+    // Only allow deletion if user owns the document or is admin
+    if (document.user_id !== user.id && !isAdmin) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
     }
 

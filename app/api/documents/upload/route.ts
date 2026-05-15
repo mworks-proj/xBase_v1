@@ -25,20 +25,37 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "No tax return ID provided" }, { status: 400 })
     }
 
-    // Verify user owns this tax return
-    const { data: taxReturn, error: taxReturnError } = await supabase
-      .from("tax_returns")
-      .select("id")
-      .eq("id", taxReturnId)
-      .eq("user_id", user.id)
+    // Check if user is admin
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("is_admin")
+      .eq("id", user.id)
       .single()
+
+    const isAdmin = profile?.is_admin === true
+
+    // Verify user owns this tax return (or is admin)
+    const taxReturnQuery = supabase
+      .from("tax_returns")
+      .select("id, user_id")
+      .eq("id", taxReturnId)
+
+    // Non-admins can only access their own returns
+    if (!isAdmin) {
+      taxReturnQuery.eq("user_id", user.id)
+    }
+
+    const { data: taxReturn, error: taxReturnError } = await taxReturnQuery.single()
 
     if (taxReturnError || !taxReturn) {
       return NextResponse.json({ error: "Tax return not found" }, { status: 404 })
     }
 
+    // Use the tax return's user_id for the file path (important for admin uploads)
+    const ownerId = taxReturn.user_id
+
     // Upload to Vercel Blob (private storage)
-    const blob = await put(`tax-documents/${user.id}/${taxReturnId}/${file.name}`, file, {
+    const blob = await put(`tax-documents/${ownerId}/${taxReturnId}/${file.name}`, file, {
       access: "private",
     })
 
@@ -47,7 +64,7 @@ export async function POST(request: NextRequest) {
       .from("tax_documents")
       .insert({
         tax_return_id: taxReturnId,
-        user_id: user.id,
+        user_id: ownerId,
         document_type: documentType || "other",
         file_name: file.name,
         file_url: blob.pathname, // Store pathname for private access
