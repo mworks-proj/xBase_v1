@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { documentCategories } from "@/lib/config"
@@ -12,24 +12,21 @@ import {
   AlertCircle,
   File,
   Image,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Loader2
 } from "lucide-react"
 import Link from "next/link"
+import { createClient } from "@/lib/supabase/client"
 
-// Mock uploaded documents
-const mockUploaded = [
-  {
-    id: "1",
-    category: "government_id",
-    fileName: "drivers-license.pdf",
-    fileSize: 245000,
-    uploadedAt: "2025-01-15T10:30:00Z",
-    verified: true,
-  },
-]
-
-// Mock required categories for current intake path
-const requiredCategories = ["w2", "government_id", "prior_return"]
+type UploadedDoc = {
+  id: string
+  category: string
+  fileName: string
+  fileSize: number
+  fileUrl: string
+  uploadedAt: string
+  verified: boolean
+}
 
 type UploadingFile = {
   id: string
@@ -37,24 +34,85 @@ type UploadingFile = {
   category: string
   progress: number
   status: "uploading" | "complete" | "error"
+  errorMessage?: string
 }
 
 export default function DocumentsPage() {
   const [uploadingFiles, setUploadingFiles] = useState<UploadingFile[]>([])
-  const [uploadedDocs, setUploadedDocs] = useState(mockUploaded)
+  const [uploadedDocs, setUploadedDocs] = useState<UploadedDoc[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [taxReturnId, setTaxReturnId] = useState<string | null>(null)
+  const [requiredCategories, setRequiredCategories] = useState<string[]>(["w2", "government_id"])
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
 
+  // Load existing documents and tax return
+  useEffect(() => {
+    async function loadData() {
+      const supabase = createClient()
+      
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      // Get the most recent tax return for the current year
+      const currentYear = new Date().getFullYear()
+      const { data: taxReturn } = await supabase
+        .from("tax_returns")
+        .select("id, filing_status")
+        .eq("user_id", user.id)
+        .eq("tax_year", currentYear)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .single()
+
+      if (taxReturn) {
+        setTaxReturnId(taxReturn.id)
+        
+        // Set required categories based on filing status
+        if (taxReturn.filing_status === "married_joint") {
+          setRequiredCategories(["w2", "government_id", "dependent_info"])
+        }
+
+        // Load existing documents
+        const { data: docs } = await supabase
+          .from("tax_documents")
+          .select("*")
+          .eq("tax_return_id", taxReturn.id)
+          .order("created_at", { ascending: false })
+
+        if (docs) {
+          setUploadedDocs(docs.map(d => ({
+            id: d.id,
+            category: d.document_type,
+            fileName: d.file_name,
+            fileSize: d.file_size || 0,
+            fileUrl: d.file_url,
+            uploadedAt: d.created_at,
+            verified: d.status === "verified",
+          })))
+        }
+      }
+      
+      setIsLoading(false)
+    }
+
+    loadData()
+  }, [])
+
   const handleFileSelect = (category: string) => {
+    if (!taxReturnId) {
+      alert("Please complete the tax intake form first.")
+      return
+    }
     setSelectedCategory(category)
     fileInputRef.current?.click()
   }
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
-    if (!files || !selectedCategory) return
+    if (!files || !selectedCategory || !taxReturnId) return
 
-    Array.from(files).forEach((file) => {
+    for (const file of Array.from(files)) {
       const uploadId = `upload-${Date.now()}-${Math.random()}`
       
       // Add to uploading state
@@ -69,46 +127,87 @@ export default function DocumentsPage() {
         },
       ])
 
-      // Simulate upload progress
-      let progress = 0
-      const interval = setInterval(() => {
-        progress += Math.random() * 30
-        if (progress >= 100) {
-          progress = 100
-          clearInterval(interval)
-          
-          // Move to uploaded state
-          setTimeout(() => {
-            setUploadingFiles((prev) => prev.filter((f) => f.id !== uploadId))
-            setUploadedDocs((prev) => [
-              ...prev,
-              {
-                id: uploadId,
-                category: selectedCategory,
-                fileName: file.name,
-                fileSize: file.size,
-                uploadedAt: new Date().toISOString(),
-                verified: false,
-              },
-            ])
-          }, 500)
+      try {
+        // Create form data
+        const formData = new FormData()
+        formData.append("file", file)
+        formData.append("taxReturnId", taxReturnId)
+        formData.append("documentType", selectedCategory)
+
+        // Upload to API
+        const response = await fetch("/api/documents/upload", {
+          method: "POST",
+          body: formData,
+        })
+
+        const result = await response.json()
+
+        if (!response.ok) {
+          throw new Error(result.error || "Upload failed")
         }
-        
+
+        // Update progress to complete
         setUploadingFiles((prev) =>
           prev.map((f) =>
-            f.id === uploadId ? { ...f, progress: Math.min(progress, 100) } : f
+            f.id === uploadId ? { ...f, progress: 100, status: "complete" } : f
           )
         )
-      }, 200)
-    })
+
+        // Move to uploaded state after brief delay
+        setTimeout(() => {
+          setUploadingFiles((prev) => prev.filter((f) => f.id !== uploadId))
+          setUploadedDocs((prev) => [
+            {
+              id: result.document.id,
+              category: selectedCategory,
+              fileName: result.document.fileName,
+              fileSize: file.size,
+              fileUrl: result.document.fileUrl || "",
+              uploadedAt: result.document.createdAt,
+              verified: false,
+            },
+            ...prev,
+          ])
+        }, 500)
+      } catch (error) {
+        setUploadingFiles((prev) =>
+          prev.map((f) =>
+            f.id === uploadId 
+              ? { ...f, status: "error", errorMessage: error instanceof Error ? error.message : "Upload failed" } 
+              : f
+          )
+        )
+
+        // Remove error state after 3 seconds
+        setTimeout(() => {
+          setUploadingFiles((prev) => prev.filter((f) => f.id !== uploadId))
+        }, 3000)
+      }
+    }
 
     // Reset input
     e.target.value = ""
     setSelectedCategory(null)
   }
 
-  const removeUploadedDoc = (docId: string) => {
-    setUploadedDocs((prev) => prev.filter((d) => d.id !== docId))
+  const removeUploadedDoc = async (docId: string) => {
+    try {
+      const response = await fetch("/api/documents/delete", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ documentId: docId }),
+      })
+
+      if (!response.ok) {
+        const result = await response.json()
+        throw new Error(result.error || "Delete failed")
+      }
+
+      setUploadedDocs((prev) => prev.filter((d) => d.id !== docId))
+    } catch (error) {
+      console.error("Delete error:", error)
+      alert("Failed to delete document. Please try again.")
+    }
   }
 
   const getFileIcon = (fileName: string) => {
@@ -133,6 +232,31 @@ export default function DocumentsPage() {
   }
 
   const isRequired = (categoryId: string) => requiredCategories.includes(categoryId)
+
+  if (isLoading) {
+    return (
+      <div className="py-8 px-4 sm:px-6 flex items-center justify-center min-h-[400px]">
+        <Loader2 className="w-8 h-8 animate-spin text-accent" />
+      </div>
+    )
+  }
+
+  if (!taxReturnId) {
+    return (
+      <div className="py-8 px-4 sm:px-6">
+        <div className="max-w-4xl mx-auto text-center">
+          <FileText className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+          <h1 className="text-2xl font-bold text-foreground mb-2">No Tax Return Found</h1>
+          <p className="text-muted-foreground mb-6">
+            Please complete the tax intake form before uploading documents.
+          </p>
+          <Button asChild>
+            <Link href="/portal/intake">Start Tax Intake</Link>
+          </Button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="py-8 px-4 sm:px-6">
@@ -168,12 +292,22 @@ export default function DocumentsPage() {
                   <div className="flex-1">
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-sm font-medium truncate">{upload.file.name}</span>
-                      <span className="text-xs text-muted-foreground">{Math.round(upload.progress)}%</span>
+                      <span className="text-xs text-muted-foreground">
+                        {upload.status === "error" ? (
+                          <span className="text-destructive">{upload.errorMessage}</span>
+                        ) : upload.status === "complete" ? (
+                          <span className="text-success">Complete</span>
+                        ) : (
+                          "Uploading..."
+                        )}
+                      </span>
                     </div>
                     <div className="h-2 bg-secondary rounded-full overflow-hidden">
                       <div
-                        className="h-full bg-accent transition-all duration-300"
-                        style={{ width: `${upload.progress}%` }}
+                        className={`h-full transition-all duration-300 ${
+                          upload.status === "error" ? "bg-destructive" : "bg-accent"
+                        }`}
+                        style={{ width: upload.status === "uploading" ? "70%" : "100%" }}
                       />
                     </div>
                   </div>

@@ -1,29 +1,95 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { caseStatuses } from "@/lib/config"
-import { CheckCircle, Circle } from "lucide-react"
+"use client"
 
-// Mock data
-const mockCase = {
-  id: "case-001",
-  status: "new_intake" as const,
-  tax_year: 2025,
-  created_at: new Date().toISOString(),
-  filed_at: null,
+import { useState, useEffect } from "react"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { caseStatuses, CaseStatus } from "@/lib/config"
+import { CheckCircle, Circle, Loader2, FileText } from "lucide-react"
+import { createClient } from "@/lib/supabase/client"
+import { Button } from "@/components/ui/button"
+import Link from "next/link"
+
+type TaxReturn = {
+  id: string
+  status: CaseStatus
+  taxYear: number
+  createdAt: string
+  filedAt: string | null
 }
 
-const statusTimeline = [
-  { status: "new_intake", date: mockCase.created_at },
-  { status: "awaiting_payment", date: null },
-  { status: "ready_for_review", date: null },
-  { status: "in_progress", date: null },
-  { status: "client_review", date: null },
-  { status: "filed", date: null },
-  { status: "complete", date: null },
-] as const
+const statusOrder: CaseStatus[] = [
+  "intake",
+  "documents_pending",
+  "in_review",
+  "ready_for_review",
+  "approved",
+  "filed",
+  "completed",
+]
 
 export default function StatusPage() {
-  const currentStatusIndex = statusTimeline.findIndex(s => s.status === mockCase.status)
-  const currentStatusInfo = caseStatuses[mockCase.status]
+  const [isLoading, setIsLoading] = useState(true)
+  const [taxReturn, setTaxReturn] = useState<TaxReturn | null>(null)
+
+  useEffect(() => {
+    async function loadData() {
+      const supabase = createClient()
+      
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      const currentYear = new Date().getFullYear()
+      const { data } = await supabase
+        .from("tax_returns")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("tax_year", currentYear)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .single()
+
+      if (data) {
+        setTaxReturn({
+          id: data.id,
+          status: data.status as CaseStatus,
+          taxYear: data.tax_year,
+          createdAt: data.created_at,
+          filedAt: data.filed_at || null,
+        })
+      }
+      
+      setIsLoading(false)
+    }
+
+    loadData()
+  }, [])
+
+  if (isLoading) {
+    return (
+      <div className="py-8 px-4 sm:px-6 flex items-center justify-center min-h-[400px]">
+        <Loader2 className="w-8 h-8 animate-spin text-accent" />
+      </div>
+    )
+  }
+
+  if (!taxReturn) {
+    return (
+      <div className="py-8 px-4 sm:px-6">
+        <div className="max-w-4xl mx-auto text-center">
+          <FileText className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+          <h1 className="text-2xl font-bold text-foreground mb-2">No Tax Return Found</h1>
+          <p className="text-muted-foreground mb-6">
+            Start a new tax intake to track your progress.
+          </p>
+          <Button asChild>
+            <Link href="/portal/intake">Start Tax Intake</Link>
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  const currentStatusIndex = statusOrder.indexOf(taxReturn.status)
+  const currentStatusInfo = caseStatuses[taxReturn.status] || { label: "Unknown", color: "bg-gray-500" }
 
   return (
     <div className="py-8 px-4 sm:px-6">
@@ -33,7 +99,7 @@ export default function StatusPage() {
             Case Status
           </h1>
           <p className="text-muted-foreground">
-            Track the progress of your {mockCase.tax_year} tax return
+            Track the progress of your {taxReturn.taxYear} tax return
           </p>
         </div>
 
@@ -58,14 +124,14 @@ export default function StatusPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-0">
-              {statusTimeline.map((item, index) => {
-                const statusInfo = caseStatuses[item.status]
+              {statusOrder.map((status, index) => {
+                const statusInfo = caseStatuses[status]
                 const isComplete = index < currentStatusIndex
                 const isCurrent = index === currentStatusIndex
                 const isPending = index > currentStatusIndex
 
                 return (
-                  <div key={item.status} className="flex gap-4">
+                  <div key={status} className="flex gap-4">
                     {/* Timeline Line & Dot */}
                     <div className="flex flex-col items-center">
                       <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
@@ -81,7 +147,7 @@ export default function StatusPage() {
                           <Circle className="w-5 h-5" />
                         )}
                       </div>
-                      {index < statusTimeline.length - 1 && (
+                      {index < statusOrder.length - 1 && (
                         <div className={`w-0.5 h-16 ${
                           isComplete ? "bg-success" : "bg-border"
                         }`} />
@@ -110,11 +176,20 @@ export default function StatusPage() {
                           )}
                         </div>
                         <p className="text-sm text-muted-foreground">
-                          {getStatusDescription(item.status)}
+                          {getStatusDescription(status)}
                         </p>
-                        {item.date && (
+                        {status === "intake" && taxReturn.createdAt && (
                           <p className="text-xs text-muted-foreground mt-2">
-                            {new Date(item.date).toLocaleDateString("en-US", {
+                            {new Date(taxReturn.createdAt).toLocaleDateString("en-US", {
+                              month: "long",
+                              day: "numeric",
+                              year: "numeric",
+                            })}
+                          </p>
+                        )}
+                        {status === "filed" && taxReturn.filedAt && (
+                          <p className="text-xs text-muted-foreground mt-2">
+                            {new Date(taxReturn.filedAt).toLocaleDateString("en-US", {
                               month: "long",
                               day: "numeric",
                               year: "numeric",
@@ -129,21 +204,27 @@ export default function StatusPage() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Navigation */}
+        <div className="flex justify-between mt-8">
+          <Button variant="outline" asChild>
+            <Link href="/portal">Back to Dashboard</Link>
+          </Button>
+        </div>
       </div>
     </div>
   )
 }
 
-function getStatusDescription(status: string): string {
-  const descriptions: Record<string, string> = {
-    new_intake: "Your intake form has been submitted and is being processed.",
-    awaiting_payment: "Payment is required before we can begin preparing your return.",
-    missing_documents: "Additional documents are needed. Please check your required documents list.",
-    ready_for_review: "Your documents are complete and your return is queued for preparation.",
-    in_progress: "Your tax preparer is actively working on your return.",
-    client_review: "Your return is ready for your review before filing.",
+function getStatusDescription(status: CaseStatus): string {
+  const descriptions: Record<CaseStatus, string> = {
+    intake: "Your intake form has been submitted and is being processed.",
+    documents_pending: "Additional documents are needed. Please upload required documents.",
+    in_review: "Your tax preparer is actively reviewing your documents.",
+    ready_for_review: "Your return is ready for your review before filing.",
+    approved: "You have approved your return and it is ready to be filed.",
     filed: "Your tax return has been filed with the IRS.",
-    complete: "Your tax return is complete. Thank you for choosing us!",
+    completed: "Your tax return is complete. Thank you for choosing us!",
   }
   return descriptions[status] || "Processing..."
 }

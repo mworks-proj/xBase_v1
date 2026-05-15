@@ -17,6 +17,12 @@ export const taxPortalConfig = {
   enableXaman: true,
   paymentTiming: "after_review" as const, // "before_intake" | "after_review" | "before_filing" | "deposit"
   
+  // Default pricing (used when prep_fee is not set on tax return)
+  pricing: {
+    individual: 149,
+    business: 299,
+  },
+  
   // Features
   enableClientLogin: true,
   enableDocumentUpload: true,

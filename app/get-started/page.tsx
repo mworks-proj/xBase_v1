@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
@@ -34,7 +34,7 @@ const intakePaths = [
   },
 ]
 
-export default function GetStartedPage() {
+function GetStartedContent() {
   const searchParams = useSearchParams()
   const preSelectedService = searchParams.get("service")
   const [selectedPath, setSelectedPath] = useState<string | null>(null)
@@ -164,5 +164,17 @@ export default function GetStartedPage() {
 
       <Footer />
     </main>
+  )
+}
+
+export default function GetStartedPage() {
+  return (
+    <Suspense fallback={
+      <main className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-pulse">Loading...</div>
+      </main>
+    }>
+      <GetStartedContent />
+    </Suspense>
   )
 }
