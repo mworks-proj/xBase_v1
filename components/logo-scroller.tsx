@@ -21,8 +21,10 @@ interface LogoScrollerProps {
 export function LogoScroller({ logos, logoHeight = 40, speed = 20, gap = 38, className = "" }: LogoScrollerProps) {
   const scrollerRef = useRef<HTMLDivElement>(null)
   const [isReady, setIsReady] = useState(false)
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
+    setMounted(true)
     // Small delay to ensure images are loaded before animation starts
     const timer = setTimeout(() => setIsReady(true), 100)
     return () => clearTimeout(timer)
@@ -55,19 +57,25 @@ export function LogoScroller({ logos, logoHeight = 40, speed = 20, gap = 38, cla
                   className="relative shrink-0 transition-all duration-300"
                   style={{ height: `${logoHeight}px` }}
                 >
-                  {/* Dark mode logo (default) */}
+                  {/* Render single image with conditional classes only after mount to avoid hydration mismatch */}
                   <Image
                     src={logo.src || "/placeholder.svg"}
                     alt={logo.alt}
                     height={logoHeight}
                     width={logoHeight * 3}
                     className={`h-full w-auto object-contain brightness-50 ${
-                      logo.srcLight ? "dark:block hidden" : logo.invert ? "dark:invert-0 invert" : ""
+                      mounted
+                        ? logo.srcLight
+                          ? "dark:block hidden"
+                          : logo.invert
+                            ? "dark:invert-0 invert"
+                            : ""
+                        : ""
                     }`}
                     style={{ height: `${logoHeight}px`, width: "auto" }}
                   />
-                  {/* Light mode logo (if separate image provided) */}
-                  {logo.srcLight && (
+                  {/* Light mode logo (if separate image provided) - only render after mount */}
+                  {mounted && logo.srcLight && (
                     <Image
                       src={logo.srcLight}
                       alt={logo.alt}
