@@ -189,12 +189,19 @@ export default function PaymentsPage() {
                         }).format(taxReturn.prep_fee)}
                       </span>
                     )}
-                    <Link href={`/portal/payments/checkout?return=${taxReturn.id}&service=individual-simple`}>
-                      <Button size="sm">
-                        <CreditCard className="w-4 h-4 mr-2" />
-                        Pay Now
-                      </Button>
-                    </Link>
+                    <div className="flex gap-2">
+                      <Link href={`/portal/payments/checkout?return=${taxReturn.id}&service=individual-simple`}>
+                        <Button size="sm">
+                          <CreditCard className="w-4 h-4 mr-1" />
+                          Card
+                        </Button>
+                      </Link>
+                      <Link href={`/portal/payments/xaman-checkout?return=${taxReturn.id}&service=individual-simple`}>
+                        <Button size="sm" variant="outline">
+                          XRP
+                        </Button>
+                      </Link>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -306,7 +313,7 @@ export default function PaymentsPage() {
       {/* Security Note */}
       <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
         <Shield className="w-4 h-4" />
-        <span>All payments are processed securely via Stripe</span>
+        <span>Card payments via Stripe | XRP payments via Xaman Wallet</span>
       </div>
     </div>
   )
@@ -343,12 +350,19 @@ function ServiceCard({ service }: { service: TaxService }) {
           </Button>
         </Link>
       ) : (
-        <Link href={`/portal/payments/checkout?service=${service.id}`}>
-          <Button size="sm" className="w-full">
-            Select
-            <ArrowRight className="w-4 h-4 ml-2" />
-          </Button>
-        </Link>
+        <div className="flex gap-2">
+          <Link href={`/portal/payments/checkout?service=${service.id}`} className="flex-1">
+            <Button size="sm" className="w-full">
+              <CreditCard className="w-4 h-4 mr-1" />
+              Card
+            </Button>
+          </Link>
+          <Link href={`/portal/payments/xaman-checkout?service=${service.id}`} className="flex-1">
+            <Button size="sm" variant="outline" className="w-full">
+              XRP
+            </Button>
+          </Link>
+        </div>
       )}
     </div>
   )

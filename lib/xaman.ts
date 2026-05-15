@@ -1,7 +1,8 @@
-"use server"
-
-// Xaman API client for XRPL payments
+// Xaman types and API client
 // Docs: https://docs.xaman.dev/
+// NOTE: This is a server-only module - do not import in client components
+
+import "server-only"
 
 const XAMAN_API_URL = "https://xumm.app/api/v1"
 
@@ -180,27 +181,4 @@ export async function cancelXamanPayload(payloadUuid: string): Promise<boolean> 
   })
 
   return response.ok
-}
-
-// Convert USD to XRP drops (1 XRP = 1,000,000 drops)
-// This is a placeholder - in production, use a real price oracle
-export function usdToXrpDrops(usdAmount: number, xrpPrice: number): string {
-  const xrpAmount = usdAmount / xrpPrice
-  const drops = Math.ceil(xrpAmount * 1_000_000) // Round up to nearest drop
-  return drops.toString()
-}
-
-// Convert drops to XRP for display
-export function dropsToXrp(drops: string | number): number {
-  const dropsNum = typeof drops === "string" ? parseInt(drops, 10) : drops
-  return dropsNum / 1_000_000
-}
-
-// Format XRP amount for display
-export function formatXrp(drops: string | number): string {
-  const xrp = dropsToXrp(drops)
-  return xrp.toLocaleString(undefined, { 
-    minimumFractionDigits: 2, 
-    maximumFractionDigits: 6 
-  })
 }

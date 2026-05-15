@@ -4,10 +4,8 @@ import { createClient } from "@/lib/supabase/server"
 import { 
   createXamanPayload, 
   getXamanPayloadStatus, 
-  usdToXrpDrops,
-  dropsToXrp,
-  type XamanPayloadStatus 
 } from "@/lib/xaman"
+import { usdToXrpDrops, dropsToXrp } from "@/lib/xrp-utils"
 import { getServiceById, isCustomQuote } from "@/lib/products"
 import { v4 as uuidv4 } from "uuid"
 
